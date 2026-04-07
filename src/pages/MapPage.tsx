@@ -216,7 +216,7 @@ export function MapPage({ appkey }: MapPageProps) {
 
       try {
         const res = await fetch(
-          `/kakao-dapi/v2/local/search/keyword.json?${params}`,
+          `${import.meta.env.DEV ? "/kakao-dapi" : "/api/kakao-dapi"}/v2/local/search/keyword.json?${params}`,
         );
         if (!res.ok) {
           const t = await res.text();

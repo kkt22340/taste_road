@@ -88,25 +88,13 @@ export default function App() {
         }
 
         if (code) {
-          if (!import.meta.env.DEV) {
-            window.history.replaceState({}, "", window.location.pathname);
-            sessionStorage.setItem(
-              "kakao_oauth_err",
-              "배포 환경에서는 카카오 토큰 교환 API(백엔드)가 필요합니다.",
-            );
-            if (!cancelled) setAuth("signedOut");
-            return;
-          }
           /* authorize()에 넣은 redirectUri와 문자 단위로 같아야 함(현재 경로로 추측 금지) */
           const redirectUri = getKakaoOAuthRedirectUri();
           try {
             const accessToken = await exchangeKakaoAuthCode(code, redirectUri);
             window.Kakao?.Auth?.setAccessToken?.(accessToken, true);
             localStorage.setItem("kakao_at", accessToken);
-            /* 리다이렉트가 루트면 OAuth 직후 지도(/)가 뜨는 것을 피하고 계정 화면으로 */
-            const p = window.location.pathname || "/";
-            const next = p === "/" || p === "" ? "/account" : p;
-            window.history.replaceState({}, "", next);
+            window.history.replaceState({}, "", "/");
             if (!cancelled) setAuth("signedIn");
             return;
           } catch (e) {

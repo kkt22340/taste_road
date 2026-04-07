@@ -74,7 +74,10 @@ export async function exchangeKakaoAuthCode(
   code: string,
   redirectUri: string,
 ): Promise<string> {
-  const res = await fetch("/kakao-oauth/token", {
+  const endpoint = import.meta.env.DEV
+    ? "/kakao-oauth/token"
+    : "/api/kakao-oauth/token";
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code, redirectUri }),

@@ -52,7 +52,7 @@ export async function fetchNearbyFoodPlaces(
     size: String(size),
   });
   const res = await fetch(
-    `/kakao-dapi/v2/local/search/category.json?${params}`,
+    `${import.meta.env.DEV ? "/kakao-dapi" : "/api/kakao-dapi"}/v2/local/search/category.json?${params}`,
   );
   if (!res.ok) {
     const t = await res.text();
