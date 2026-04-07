@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { NavLink } from "react-router-dom";
 import { useAppChrome } from "../context/AppChromeContext";
+import { getProfile } from "../features/profile/profile";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -11,8 +12,21 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   ].join(" ");
 
 export function AppNavBar() {
-  const { scope, setScope, submitRegionSearch } = useAppChrome();
+  const { submitRegionSearch, focusMap } = useAppChrome();
   const [q, setQ] = useState("");
+  const [nick, setNick] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNick(getProfile().nickname ?? null);
+    const onStorage = () => setNick(getProfile().nickname ?? null);
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const initial = useMemo(() => {
+    const s = (nick ?? "").trim();
+    return s ? s.slice(0, 1).toUpperCase() : "·";
+  }, [nick]);
 
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -25,14 +39,16 @@ export function AppNavBar() {
       aria-label="Main"
     >
       <div className="flex shrink-0 flex-wrap items-center gap-0.5 sm:gap-1">
-        <NavLink className={navLinkClass} to="/" end>
+        <NavLink
+          className={navLinkClass}
+          to="/"
+          end
+          onClick={() => focusMap()}
+        >
           Map
         </NavLink>
         <NavLink className={navLinkClass} to="/feed">
           Feed
-        </NavLink>
-        <NavLink className={navLinkClass} to="/account">
-          Account
         </NavLink>
       </div>
 
@@ -54,29 +70,15 @@ export function AppNavBar() {
         />
       </form>
 
-      <div className="ml-auto flex shrink-0 items-center rounded-full border border-slate-200/90 bg-slate-100/80 p-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 sm:text-xs">
-        <button
-          type="button"
-          className={`min-h-[36px] rounded-full px-2.5 py-1 sm:px-3 ${
-            scope === "only"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500"
-          }`}
-          onClick={() => setScope("only")}
+      <div className="ml-auto flex shrink-0 items-center">
+        <NavLink
+          to="/me"
+          className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-200/90 bg-white/90 text-sm font-semibold text-slate-800 shadow-sm active:scale-95"
+          aria-label="My page"
+          title={nick ? `@${nick}` : "My page"}
         >
-          only
-        </button>
-        <button
-          type="button"
-          className={`min-h-[36px] rounded-full px-2.5 py-1 sm:px-3 ${
-            scope === "share"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500"
-          }`}
-          onClick={() => setScope("share")}
-        >
-          share
-        </button>
+          {initial}
+        </NavLink>
       </div>
     </nav>
   );

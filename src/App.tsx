@@ -13,6 +13,9 @@ import { AppChromeProvider } from "./context/AppChromeContext";
 import { FeedPage } from "./pages/FeedPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MapPage } from "./pages/MapPage";
+import { NicknameOnboardingModal } from "./features/profile/NicknameOnboardingModal";
+import { MyPage } from "./features/profile/MyPage";
+import { getProfile } from "./features/profile/profile";
 
 type AuthPhase = "checking" | "signedOut" | "signedIn";
 
@@ -23,25 +26,22 @@ function MainApp({
   appkey: string;
   onSignedOut: () => void;
 }) {
+  const [nickReady, setNickReady] = useState(() => !!getProfile().nickname?.trim());
+
   return (
     <BrowserRouter>
       <AppChromeProvider>
         <div className="flex h-full min-h-0 flex-1 flex-col">
           <AppNavBar />
           <main className="relative flex min-h-0 flex-1 flex-col">
+            <NicknameOnboardingModal
+              open={!nickReady}
+              onDone={() => setNickReady(true)}
+            />
             <Routes>
               <Route path="/" element={<MapPage appkey={appkey} />} />
               <Route path="/feed" element={<FeedPage />} />
-              <Route
-                path="/account"
-                element={
-                  <LoginPage
-                    appkey={appkey}
-                    mode="account"
-                    onSignedOut={onSignedOut}
-                  />
-                }
-              />
+              <Route path="/me" element={<MyPage onSignedOut={onSignedOut} />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

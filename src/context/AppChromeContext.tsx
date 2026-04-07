@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { ensureDemoSharedPins } from "../lib/db";
+import { purgeDemoContent } from "../lib/db";
 import type { FeedScope } from "../lib/feedScope";
 
 type AppChromeContextValue = {
@@ -20,13 +20,16 @@ type AppChromeContextValue = {
   pendingRegionQuery: string | null;
   submitRegionSearch: (raw: string) => void;
   clearPendingRegionQuery: () => void;
+  /** Map 버튼 재클릭/재진입 등: MapPage가 "내 위치로 이동"을 다시 수행하게 하는 트리거 */
+  mapFocusSeq: number;
+  focusMap: () => void;
 };
 
 const AppChromeContext = createContext<AppChromeContextValue | null>(null);
 
 export function AppChromeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    void ensureDemoSharedPins();
+    void purgeDemoContent();
   }, []);
 
   const navigate = useNavigate();
@@ -35,6 +38,7 @@ export function AppChromeProvider({ children }: { children: ReactNode }) {
   const [pendingRegionQuery, setPendingRegionQuery] = useState<string | null>(
     null,
   );
+  const [mapFocusSeq, setMapFocusSeq] = useState(0);
 
   const submitRegionSearch = useCallback(
     (raw: string) => {
@@ -46,6 +50,11 @@ export function AppChromeProvider({ children }: { children: ReactNode }) {
     },
     [navigate],
   );
+
+  const focusMap = useCallback(() => {
+    setMapFocusSeq((n) => n + 1);
+    navigate("/");
+  }, [navigate]);
 
   const clearPendingRegionQuery = useCallback(() => {
     setPendingRegionQuery(null);
@@ -59,6 +68,8 @@ export function AppChromeProvider({ children }: { children: ReactNode }) {
       pendingRegionQuery,
       submitRegionSearch,
       clearPendingRegionQuery,
+      mapFocusSeq,
+      focusMap,
     }),
     [
       scope,
@@ -66,6 +77,8 @@ export function AppChromeProvider({ children }: { children: ReactNode }) {
       pendingRegionQuery,
       submitRegionSearch,
       clearPendingRegionQuery,
+      mapFocusSeq,
+      focusMap,
     ],
   );
 

@@ -21,7 +21,7 @@ import { effectiveCheckinLimitM } from "../lib/venueCheckin";
 const MAX_PHOTOS = 5;
 /** 카카오 카테고리 검색 반경(m) — 이 앱에서만 사용하는 문구와 맞출 값 */
 const NEARBY_SEARCH_RADIUS_M = 850;
-const MAX_CHECKIN_BOOST_STEPS = 3;
+const MAX_CHECKIN_BOOST_STEPS = 4;
 
 export type CapturedPhoto = {
   id: string;

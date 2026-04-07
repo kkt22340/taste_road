@@ -10,8 +10,10 @@ export function checkinLimitFromAccuracy(accuracyM: number | null): number {
   return Math.round(Math.min(50, Math.max(18, a * 0.52 + 6)));
 }
 
-export const CHECKIN_BOOST_STEP_M = 16;
-export const CHECKIN_MAX_CAP_M = 88;
+/** 한 단계 넓힐 때마다 허용 거리 증가 — API 검색 반경(~850m)과 맞게 너무 좁으면 목록이 비어 보임 */
+export const CHECKIN_BOOST_STEP_M = 40;
+/** GPS 오차·도보 거리를 고려한 상한(이전 88m는 대부분의 FD6 후보를 화면에서 제거함) */
+export const CHECKIN_MAX_CAP_M = 280;
 
 export function effectiveCheckinLimitM(
   accuracyM: number | null,

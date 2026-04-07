@@ -7,7 +7,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppChrome } from "../context/AppChromeContext";
 import {
-  ensureDemoSharedPins,
   loadAllPhotos,
   loadMarkers,
   saveMarker,
@@ -128,9 +127,11 @@ function UserMePinOverlay({ lat, lng }: { lat: number; lng: number }) {
 export function MapPage({ appkey }: MapPageProps) {
   const {
     scope,
+    setScope,
     regionSearchSeq,
     pendingRegionQuery,
     clearPendingRegionQuery,
+    mapFocusSeq,
   } = useAppChrome();
 
   const [loading, loadError] = useKakaoLoader({
@@ -170,7 +171,6 @@ export function MapPage({ appkey }: MapPageProps) {
   }, [map, center.lat, center.lng]);
 
   const refreshPins = useCallback(async () => {
-    await ensureDemoSharedPins();
     const [markers, photos] = await Promise.all([
       loadMarkers(),
       loadAllPhotos(),
@@ -368,12 +368,44 @@ export function MapPage({ appkey }: MapPageProps) {
       });
   }, []);
 
+  /** 처음 진입/Map 버튼 재클릭 시: 현재 위치로 센터 */
+  useEffect(() => {
+    if (loading || loadError) return;
+    recenterOnMyLocation();
+  }, [mapFocusSeq, loading, loadError, recenterOnMyLocation]);
+
   const statusError =
     !!loadError || status.includes("HTTP") || status.includes("실패");
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div className="relative z-0 min-h-[50dvh] w-full flex-1">
+        <div className="absolute left-3 top-3 z-[1002]">
+          <div className="flex shrink-0 items-center rounded-full border border-slate-200/90 bg-white/95 p-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 shadow-lg backdrop-blur-sm sm:text-xs">
+            <button
+              type="button"
+              className={`min-h-[34px] rounded-full px-2.5 py-1 sm:px-3 ${
+                scope === "only"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-500"
+              }`}
+              onClick={() => setScope("only")}
+            >
+              only
+            </button>
+            <button
+              type="button"
+              className={`min-h-[34px] rounded-full px-2.5 py-1 sm:px-3 ${
+                scope === "share"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-500"
+              }`}
+              onClick={() => setScope("share")}
+            >
+              share
+            </button>
+          </div>
+        </div>
         <Map
           className="h-full min-h-[50dvh] w-full"
           center={center}
