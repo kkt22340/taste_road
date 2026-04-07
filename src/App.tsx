@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import {
   exchangeKakaoAuthCode,
   getKakaoAccessToken,
@@ -8,17 +8,11 @@ import {
   loadKakaoJsSdk,
   restoreKakaoSessionFromStorage,
 } from "./lib/kakaoAuth";
+import { AppNavBar } from "./components/AppNavBar";
+import { AppChromeProvider } from "./context/AppChromeContext";
 import { FeedPage } from "./pages/FeedPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MapPage } from "./pages/MapPage";
-
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  [
-    "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full px-3 text-sm font-medium transition-colors sm:px-4 sm:text-base",
-    isActive
-      ? "bg-sky-100 text-sky-900 shadow-sm shadow-sky-900/5"
-      : "text-slate-600 active:bg-slate-200/60 hover:bg-slate-100/90 hover:text-slate-900",
-  ].join(" ");
 
 type AuthPhase = "checking" | "signedOut" | "signedIn";
 
@@ -31,39 +25,28 @@ function MainApp({
 }) {
   return (
     <BrowserRouter>
-      <div className="flex h-full min-h-0 flex-1 flex-col">
-        <nav
-          className="relative z-[1001] flex shrink-0 flex-wrap gap-1 border-b border-slate-200/80 bg-white/75 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] shadow-[0_1px_0_0_rgba(15,23,42,0.04)] backdrop-blur-xl sm:px-4"
-          aria-label="주요 메뉴"
-        >
-          <NavLink className={navLinkClass} to="/" end>
-            지도
-          </NavLink>
-          <NavLink className={navLinkClass} to="/feed">
-            피드
-          </NavLink>
-          <NavLink className={navLinkClass} to="/account">
-            계정
-          </NavLink>
-        </nav>
-        <main className="relative flex min-h-0 flex-1 flex-col">
-          <Routes>
-            <Route path="/" element={<MapPage appkey={appkey} />} />
-            <Route path="/feed" element={<FeedPage />} />
-            <Route
-              path="/account"
-              element={
-                <LoginPage
-                  appkey={appkey}
-                  mode="account"
-                  onSignedOut={onSignedOut}
-                />
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-      </div>
+      <AppChromeProvider>
+        <div className="flex h-full min-h-0 flex-1 flex-col">
+          <AppNavBar />
+          <main className="relative flex min-h-0 flex-1 flex-col">
+            <Routes>
+              <Route path="/" element={<MapPage appkey={appkey} />} />
+              <Route path="/feed" element={<FeedPage />} />
+              <Route
+                path="/account"
+                element={
+                  <LoginPage
+                    appkey={appkey}
+                    mode="account"
+                    onSignedOut={onSignedOut}
+                  />
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+        </div>
+      </AppChromeProvider>
     </BrowserRouter>
   );
 }
@@ -162,8 +145,7 @@ export default function App() {
           Taste Road
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-red-600">
-          `.env`에 `VITE_KAKAO_JAVASCRIPT_KEY`를 설정한 뒤 개발 서버를 다시
-          실행하세요.
+          앱을 불러올 수 없습니다. 네트워크를 확인하거나 나중에 다시 열어 주세요.
         </p>
       </div>
     );

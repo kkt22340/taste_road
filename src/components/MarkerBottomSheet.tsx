@@ -46,9 +46,28 @@ export function MarkerBottomSheet({
         aria-labelledby="sheet-title"
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300 sm:hidden" />
-        <h2 id="sheet-title" className="text-lg font-semibold tracking-tight">
-          {marker.title}
-        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2
+            id="sheet-title"
+            className="text-lg font-semibold tracking-tight"
+          >
+            {marker.title}
+          </h2>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase ${
+              (marker.visibility ?? "private") === "private"
+                ? "bg-slate-200 text-slate-700"
+                : "bg-emerald-100 text-emerald-800"
+            }`}
+          >
+            {(marker.visibility ?? "private") === "private" ? "private" : "shared"}
+          </span>
+        </div>
+        {marker.note ? (
+          <p className="mt-2 text-sm leading-relaxed text-slate-700">
+            {marker.note}
+          </p>
+        ) : null}
         <p className="mt-1 text-xs text-slate-600">
           {new Date(marker.createdAt).toLocaleString("ko-KR")}
         </p>

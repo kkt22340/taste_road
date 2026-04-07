@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { loginErrorForUser } from "../lib/loginUserMessages";
 import {
-  getAdvertisedKakaoRedirectUri,
   getKakaoAccessToken,
   initKakaoAuth,
   loadKakaoJsSdk,
@@ -39,7 +39,7 @@ export function LoginPage({
     const pending = sessionStorage.getItem("kakao_oauth_err");
     if (pending) {
       sessionStorage.removeItem("kakao_oauth_err");
-      setErr(pending);
+      setErr(loginErrorForUser(pending));
     }
   }, []);
 
@@ -56,7 +56,11 @@ export function LoginPage({
         setToken(t ?? localStorage.getItem("kakao_at") ?? undefined);
         if (mode === "gate" && t) onAuthenticatedRef.current?.();
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "SDK 오류");
+        setErr(
+          loginErrorForUser(
+            e instanceof Error ? e.message : "일시적 오류",
+          ),
+        );
       }
     })();
     return () => {
@@ -69,7 +73,11 @@ export function LoginPage({
     try {
       startKakaoAuthorize();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "로그인 시작 실패");
+      setErr(
+        loginErrorForUser(
+          e instanceof Error ? e.message : "로그인 시작 실패",
+        ),
+      );
     }
   }, []);
 
@@ -92,37 +100,11 @@ export function LoginPage({
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-slate-600">
         {mode === "gate"
-          ? "카카오로 로그인한 뒤 지도·피드를 이용할 수 있어요."
-          : "카카오 계정으로 로그인하면 이 기기의 방문 기록과 연동할 준비가 됩니다. (현재 버전은 로컬 저장소 우선)"}
+          ? "카카오로 로그인하고 맛집 지도와 나만의 기록을 써 보세요."
+          : "로그인하면 이 기기에서 남긴 방문 기록·사진과 계정이 연결됩니다."}
       </p>
-      {mode === "gate" && (
-        <p className="mt-3 rounded-xl border border-slate-200/90 bg-white/70 px-3 py-2 text-[0.7rem] leading-relaxed text-slate-600 shadow-sm backdrop-blur-sm">
-          <span className="font-medium text-slate-700">KOE006</span> 방지: [카카오
-          개발자 콘솔] → [내 애플리케이션] → <strong>카카오 로그인</strong> →{" "}
-          <strong>리다이렉트 URI</strong>에 아래 값을 <strong>그대로</strong>{" "}
-          등록하세요. (<code className="text-amber-800">localhost</code>와{" "}
-          <code className="text-amber-800">127.0.0.1</code>는 다른 주소입니다.
-          끝 <code className="text-amber-800">/</code> 유무도 일치해야 합니다.)
-          <code className="mt-1.5 block break-all text-slate-800">
-            {getAdvertisedKakaoRedirectUri() || "(브라우저에서 열면 표시됩니다)"}
-          </code>
-        </p>
-      )}
-      {mode === "account" && (
-        <p className="mt-3 rounded-xl border border-slate-200/90 bg-white/70 px-3 py-2 text-[0.7rem] leading-relaxed text-slate-600 shadow-sm backdrop-blur-sm">
-          콘솔에 등록한 <span className="text-slate-700">리다이렉트 URI</span>와 아래가
-          같아야 합니다. (<span className="text-slate-700">KOE006</span>은 보통 여기
-          불일치입니다.) 다르면{" "}
-          <code className="text-amber-800">.env</code>의{" "}
-          <code className="text-amber-800">VITE_KAKAO_REDIRECT_URI</code>에 동일한
-          값을 적고 서버를 다시 켜세요.
-          <code className="mt-1.5 block break-all text-slate-800">
-            {getAdvertisedKakaoRedirectUri() || "(브라우저에서 열면 표시됩니다)"}
-          </code>
-        </p>
-      )}
       {!ready && !err && (
-        <p className="mt-4 text-sm text-slate-500">카카오 SDK 준비 중…</p>
+        <p className="mt-4 text-sm text-slate-500">잠시만 기다려 주세요…</p>
       )}
       {err && <p className="mt-4 text-sm text-red-600">{err}</p>}
       {ready && (
