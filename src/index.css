@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/*
+  Taste Road — Tailwind + 반응형 (모바일 웹 / Android·iOS 브라우저 참고)
+  - sm: 640px~ 태블릿·가로 모드
+  - 터치 타깃 최소 44px (Apple HIG)
+  - safe-area: 노치·홈 인디케이터 영역 (viewport-fit=cover 필요)
+*/
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Segoe UI", sans-serif;
+  /* 앱 크롬 — 컴포넌트에서 var(--color-app-*) 로 재사용 가능 */
+  --color-app-bg: #f8fafc;
+  --color-app-surface: rgba(255, 255, 255, 0.82);
+  --color-app-border: rgba(226, 232, 240, 0.95);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 뷰포트 높이 고정 + height% 체인 — 끊기면 flex-1 지도 영역이 0px → 검은 화면만 보임 */
+  html {
+    @apply m-0 h-full;
+  }
+
+  body {
+    @apply m-0 min-h-[100dvh] h-full w-full font-sans text-slate-800 antialiased;
+    background-color: var(--color-app-bg);
+    background-image: radial-gradient(
+        ellipse 120% 80% at 100% -20%,
+        rgba(125, 211, 252, 0.22),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 90% 60% at -10% 100%,
+        rgba(251, 191, 36, 0.12),
+        transparent 50%
+      ),
+      linear-gradient(165deg, #f8fafc 0%, #f1f5f9 42%, #eef2ff 100%);
+    background-attachment: fixed;
+  }
+
+  #root {
+    @apply flex h-full min-h-[100dvh] w-full flex-col;
+  }
+}
