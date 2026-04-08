@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import type { VisitMarker, VisitPhoto } from "../types/domain";
+import type {
+  MarkerVisibility,
+  VisitMarker,
+  VisitPhoto,
+} from "../types/domain";
 import { loadPhotosForMarker } from "../lib/db";
 import { PhotoThumb } from "./PhotoThumb";
 
@@ -9,6 +13,8 @@ type Props = {
   onClose: () => void;
   onOpenCamera: () => void;
   onDeleteMarker: (id: string) => void;
+  /** 설정 시 시트에서 나만 보기 / 공유 전환(서버 동기화는 부모) */
+  onVisibilityChange?: (visibility: MarkerVisibility) => void | Promise<void>;
   refreshKey: number;
 };
 
@@ -18,9 +24,11 @@ export function MarkerBottomSheet({
   onClose,
   onOpenCamera,
   onDeleteMarker,
+  onVisibilityChange,
   refreshKey,
 }: Props) {
   const [photos, setPhotos] = useState<VisitPhoto[]>([]);
+  const [visPending, setVisPending] = useState(false);
 
   useEffect(() => {
     if (!marker || !open) {
@@ -53,15 +61,58 @@ export function MarkerBottomSheet({
           >
             {marker.title}
           </h2>
-          <span
-            className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase ${
-              (marker.visibility ?? "private") === "private"
-                ? "bg-slate-200 text-slate-700"
-                : "bg-emerald-100 text-emerald-800"
-            }`}
-          >
-            {(marker.visibility ?? "private") === "private" ? "private" : "shared"}
-          </span>
+          {onVisibilityChange ? (
+            <div className="flex items-center rounded-full border border-slate-200/90 bg-slate-50/90 p-0.5 text-[0.65rem] font-semibold text-slate-600">
+              <button
+                type="button"
+                disabled={visPending}
+                className={`rounded-full px-2.5 py-1 ${
+                  (marker.visibility ?? "private") === "private"
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "text-slate-500"
+                } ${visPending ? "opacity-60" : ""}`}
+                onClick={() => {
+                  if ((marker.visibility ?? "private") === "private") return;
+                  setVisPending(true);
+                  void Promise.resolve(onVisibilityChange("private")).finally(
+                    () => setVisPending(false),
+                  );
+                }}
+              >
+                나만
+              </button>
+              <button
+                type="button"
+                disabled={visPending}
+                className={`rounded-full px-2.5 py-1 ${
+                  (marker.visibility ?? "private") === "shared"
+                    ? "bg-emerald-700 text-white shadow-sm"
+                    : "text-slate-500"
+                } ${visPending ? "opacity-60" : ""}`}
+                onClick={() => {
+                  if ((marker.visibility ?? "private") === "shared") return;
+                  setVisPending(true);
+                  void Promise.resolve(onVisibilityChange("shared")).finally(
+                    () => setVisPending(false),
+                  );
+                }}
+              >
+                공유
+              </button>
+            </div>
+          ) : (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase ${
+                (marker.visibility ?? "private") === "private"
+                  ? "bg-slate-200 text-slate-700"
+                  : "bg-emerald-100 text-emerald-800"
+              }`}
+            >
+              {(marker.visibility ?? "private") === "private"
+                ? "private"
+                : "shared"}
+            </span>
+          )}
         </div>
         {marker.note ? (
           <p className="mt-2 text-sm leading-relaxed text-slate-700">

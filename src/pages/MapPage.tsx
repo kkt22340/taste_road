@@ -9,6 +9,7 @@ import { useAppChrome } from "../context/AppChromeContext";
 import {
   loadAllPhotos,
   loadMarkers,
+  loadPhotosForMarker,
   saveMarker,
   savePhoto,
   removeMarker,
@@ -19,12 +20,17 @@ import {
   readLastPersistedPosition,
 } from "../lib/geolocation";
 import { describeKakaoMapLoadError } from "../lib/mapErrors";
-import type { VisitMarker } from "../types/domain";
+import type { MarkerVisibility, VisitMarker } from "../types/domain";
 import { CameraModal } from "../components/CameraModal";
 import { MarkerBottomSheet } from "../components/MarkerBottomSheet";
 import { NewSpotModal, type NewSpotPayload } from "../components/NewSpotModal";
 import { useSupabaseAuthOptional } from "../context/SupabaseAuthContext";
-import { createPostWithPhotos } from "../lib/supabase/postsRemote";
+import {
+  appendOrCreatePostPhotos,
+  createPostWithPhotos,
+  deleteRemotePostForUser,
+  updateRemotePostFromMarker,
+} from "../lib/supabase/postsRemote";
 
 const DEFAULT = { lat: 37.5665, lng: 126.978 };
 
@@ -276,8 +282,41 @@ export function MapPage({ appkey }: MapPageProps) {
         blob,
       });
       setPhotoEpoch((n) => n + 1);
+
+      const uid = supaRemote?.session?.user?.id;
+      const sb = supaRemote?.supabase;
+      if (uid && sb) {
+        try {
+          await appendOrCreatePostPhotos(
+            sb,
+            uid,
+            selectedMarker.id,
+            {
+              title: selectedMarker.title,
+              note: selectedMarker.note,
+              lat: selectedMarker.lat,
+              lng: selectedMarker.lng,
+              visibility:
+                (selectedMarker.visibility ?? "private") as
+                  | "private"
+                  | "shared",
+              kakaoPlaceId: selectedMarker.kakaoPlaceId,
+              addressName: selectedMarker.addressName,
+              categoryName: selectedMarker.categoryName,
+            },
+            [blob],
+          );
+        } catch (e) {
+          console.error(e);
+          setStatus("사진은 이 기기에 저장됐어요. 서버 동기화는 실패했어요.");
+        }
+      }
     },
-    [selectedMarker],
+    [
+      selectedMarker,
+      supaRemote?.session?.user?.id,
+      supaRemote?.supabase,
+    ],
   );
 
   const onSaveNewSpot = useCallback(
@@ -334,6 +373,68 @@ export function MapPage({ appkey }: MapPageProps) {
       setStatus(payload.privateOnly ? "Saved (only you)." : "Shared on map.");
     },
     [supaRemote?.session?.user?.id, supaRemote?.supabase],
+  );
+
+  const onMarkerVisibilityChange = useCallback(
+    async (visibility: MarkerVisibility) => {
+      const m = selectedMarker;
+      if (!m) return;
+      const updated: VisitMarker = { ...m, visibility };
+      await saveMarker(updated);
+      setSelectedMarker(updated);
+      await refreshPins();
+      const uid = supaRemote?.session?.user?.id;
+      const sb = supaRemote?.supabase;
+      if (!uid || !sb) return;
+
+      try {
+        const { data: existing, error: selErr } = await sb
+          .from("posts")
+          .select("id")
+          .eq("id", m.id)
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (selErr) throw selErr;
+
+        if (!existing && visibility === "shared") {
+          const markerPhotos = await loadPhotosForMarker(m.id);
+          const sorted = [...markerPhotos].sort(
+            (a, b) => a.createdAt - b.createdAt,
+          );
+          if (sorted.length > 0) {
+            await appendOrCreatePostPhotos(
+              sb,
+              uid,
+              m.id,
+              {
+                title: updated.title,
+                note: updated.note,
+                lat: updated.lat,
+                lng: updated.lng,
+                visibility: "shared",
+                kakaoPlaceId: updated.kakaoPlaceId,
+                addressName: updated.addressName,
+                categoryName: updated.categoryName,
+              },
+              sorted.map((p) => p.blob),
+            );
+          }
+        } else {
+          await updateRemotePostFromMarker(sb, uid, updated);
+        }
+      } catch (e) {
+        console.error(e);
+        setStatus(
+          "공개 설정은 이 기기에 반영됐어요. 서버 동기화는 실패했어요.",
+        );
+      }
+    },
+    [
+      selectedMarker,
+      refreshPins,
+      supaRemote?.session?.user?.id,
+      supaRemote?.supabase,
+    ],
   );
 
   const openSheet = useCallback((m: VisitMarker) => {
@@ -557,9 +658,26 @@ export function MapPage({ appkey }: MapPageProps) {
           setSelectedMarker(null);
         }}
         onOpenCamera={() => setCameraOpen(true)}
+        onVisibilityChange={onMarkerVisibilityChange}
         onDeleteMarker={async (id) => {
+          const uid = supaRemote?.session?.user?.id;
+          const sb = supaRemote?.supabase;
           await removeMarker(id);
+          if (selectedMarker?.id === id) {
+            setSelectedMarker(null);
+            setSheetOpen(false);
+          }
           await refreshPins();
+          if (uid && sb) {
+            try {
+              await deleteRemotePostForUser(sb, uid, id);
+            } catch (e) {
+              console.error(e);
+              setStatus(
+                "기기에서 삭제했어요. 서버에서 완전히 지우지 못했을 수 있어요.",
+              );
+            }
+          }
         }}
         refreshKey={photoEpoch}
       />

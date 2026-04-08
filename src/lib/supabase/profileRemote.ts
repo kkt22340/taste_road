@@ -5,6 +5,32 @@ export type RemoteProfileRow = {
   avatar_url: string | null;
 };
 
+/** 피드 등에서 여러 사용자 표시용 */
+export type ProfilePublicRow = {
+  id: string;
+  nickname: string;
+  avatar_url: string | null;
+};
+
+export async function fetchProfilesByIds(
+  supabase: SupabaseClient,
+  userIds: string[],
+): Promise<Map<string, ProfilePublicRow>> {
+  const unique = [...new Set(userIds.filter(Boolean))];
+  const map = new Map<string, ProfilePublicRow>();
+  if (!unique.length) return map;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, nickname, avatar_url")
+    .in("id", unique);
+  if (error) throw error;
+  for (const row of data ?? []) {
+    const r = row as ProfilePublicRow;
+    map.set(r.id, r);
+  }
+  return map;
+}
+
 export async function fetchProfileRow(
   supabase: SupabaseClient,
   userId: string,
