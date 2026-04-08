@@ -4,18 +4,40 @@ import { setNickname } from "./profile";
 type Props = {
   open: boolean;
   onDone: () => void;
+  /** Supabase 등 서버에 닉네임 저장 */
+  persistRemote?: (nickname: string) => Promise<void>;
 };
 
-export function NicknameOnboardingModal({ open, onDone }: Props) {
+export function NicknameOnboardingModal({
+  open,
+  onDone,
+  persistRemote,
+}: Props) {
   const [nick, setNick] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [remoteErr, setRemoteErr] = useState<string | null>(null);
 
   const canSave = useMemo(() => nick.trim().length >= 2, [nick]);
 
-  const save = useCallback(() => {
-    if (!canSave) return;
+  const save = useCallback(async () => {
+    if (!canSave || busy) return;
+    setRemoteErr(null);
     setNickname(nick);
+    if (persistRemote) {
+      setBusy(true);
+      try {
+        await persistRemote(nick.trim());
+      } catch (e) {
+        setRemoteErr(
+          e instanceof Error ? e.message : "서버에 저장하지 못했어요.",
+        );
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+    }
     onDone();
-  }, [canSave, nick, onDone]);
+  }, [busy, canSave, nick, onDone, persistRemote]);
 
   if (!open) return null;
 
@@ -46,13 +68,16 @@ export function NicknameOnboardingModal({ open, onDone }: Props) {
             className="mt-4 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-[16px] text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/25"
           />
 
+          {remoteErr ? (
+            <p className="mt-2 text-[13px] text-red-600">{remoteErr}</p>
+          ) : null}
           <button
             type="button"
-            onClick={save}
-            disabled={!canSave}
+            onClick={() => void save()}
+            disabled={!canSave || busy}
             className="mt-4 h-12 w-full rounded-xl bg-sky-600 text-[16px] font-semibold text-white shadow-sm active:bg-sky-700 disabled:bg-slate-300"
           >
-            시작하기
+            {busy ? "저장 중…" : "시작하기"}
           </button>
         </div>
       </div>

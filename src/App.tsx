@@ -8,14 +8,21 @@ import {
   loadKakaoJsSdk,
   restoreKakaoSessionFromStorage,
 } from "./lib/kakaoAuth";
+import { isSupabaseConfigured } from "./lib/supabase/client";
 import { AppNavBar } from "./components/AppNavBar";
 import { AppChromeProvider } from "./context/AppChromeContext";
+import {
+  SupabaseAuthProvider,
+  useSupabaseAuth,
+  useSupabaseAuthOptional,
+} from "./context/SupabaseAuthContext";
 import { FeedPage } from "./pages/FeedPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MapPage } from "./pages/MapPage";
 import { NicknameOnboardingModal } from "./features/profile/NicknameOnboardingModal";
 import { MyPage } from "./features/profile/MyPage";
 import { getProfile } from "./features/profile/profile";
+import { upsertProfileNickname } from "./lib/supabase/profileRemote";
 
 type AuthPhase = "checking" | "signedOut" | "signedIn";
 
@@ -26,7 +33,26 @@ function MainApp({
   appkey: string;
   onSignedOut: () => void;
 }) {
-  const [nickReady, setNickReady] = useState(() => !!getProfile().nickname?.trim());
+  const supa = useSupabaseAuthOptional();
+  const [nickReady, setNickReady] = useState(
+    () => !!getProfile().nickname?.trim(),
+  );
+
+  useEffect(() => {
+    const sync = () => setNickReady(!!getProfile().nickname?.trim());
+    window.addEventListener("taste-road-profile-changed", sync);
+    sync();
+    return () =>
+      window.removeEventListener("taste-road-profile-changed", sync);
+  }, []);
+
+  const persistRemote =
+    supa?.user?.id != null
+      ? async (nickname: string) => {
+          await upsertProfileNickname(supa.supabase, supa.user.id, nickname);
+          await supa.refreshServerProfile();
+        }
+      : undefined;
 
   return (
     <BrowserRouter>
@@ -37,11 +63,15 @@ function MainApp({
             <NicknameOnboardingModal
               open={!nickReady}
               onDone={() => setNickReady(true)}
+              persistRemote={persistRemote}
             />
             <Routes>
               <Route path="/" element={<MapPage appkey={appkey} />} />
               <Route path="/feed" element={<FeedPage />} />
-              <Route path="/me" element={<MyPage onSignedOut={onSignedOut} />} />
+              <Route
+                path="/me"
+                element={<MyPage onSignedOut={onSignedOut} />}
+              />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
@@ -51,17 +81,44 @@ function MainApp({
   );
 }
 
-export default function App() {
-  const appkey = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY?.trim() ?? "";
-  const [auth, setAuth] = useState<AuthPhase>("checking");
+function AppWithSupabase({ appkey }: { appkey: string }) {
+  const { session, loading, signInWithKakao, signOut } = useSupabaseAuth();
 
+  const onSignedOut = useCallback(() => {
+    void signOut();
+  }, [signOut]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 font-sans text-slate-500">
+        <p className="text-sm font-medium text-slate-600">로그인 확인 중…</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <LoginPage
+        appkey={appkey}
+        mode="gate"
+        supabaseOAuth
+        onSupabaseLogin={() => void signInWithKakao()}
+      />
+    );
+  }
+
+  return <MainApp appkey={appkey} onSignedOut={onSignedOut} />;
+}
+
+function AppLegacyKakao({ appkey }: { appkey: string }) {
+  const [auth, setAuth] = useState<AuthPhase>("checking");
   const onAuthenticated = useCallback(() => setAuth("signedIn"), []);
   const onSignedOut = useCallback(() => setAuth("signedOut"), []);
 
   useEffect(() => {
     if (!appkey) return;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         await loadKakaoJsSdk();
         if (cancelled) return;
@@ -80,7 +137,7 @@ export default function App() {
           try {
             decoded = msg ? decodeURIComponent(msg) : oauthError ?? "";
           } catch {
-            /* keep raw */
+            /* keep */
           }
           sessionStorage.setItem("kakao_oauth_err", decoded);
           if (!cancelled) setAuth("signedOut");
@@ -88,10 +145,12 @@ export default function App() {
         }
 
         if (code) {
-          /* authorize()에 넣은 redirectUri와 문자 단위로 같아야 함(현재 경로로 추측 금지) */
           const redirectUri = getKakaoOAuthRedirectUri();
           try {
-            const accessToken = await exchangeKakaoAuthCode(code, redirectUri);
+            const accessToken = await exchangeKakaoAuthCode(
+              code,
+              redirectUri,
+            );
             window.Kakao?.Auth?.setAccessToken?.(accessToken, true);
             localStorage.setItem("kakao_at", accessToken);
             window.history.replaceState({}, "", "/");
@@ -126,19 +185,6 @@ export default function App() {
     };
   }, [appkey]);
 
-  if (!appkey) {
-    return (
-      <div className="min-h-[100dvh] w-full p-6 font-sans text-slate-800">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-          Taste Road
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-red-600">
-          앱을 불러올 수 없습니다. 네트워크를 확인하거나 나중에 다시 열어 주세요.
-        </p>
-      </div>
-    );
-  }
-
   if (auth === "checking") {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 font-sans text-slate-500">
@@ -158,4 +204,32 @@ export default function App() {
   }
 
   return <MainApp appkey={appkey} onSignedOut={onSignedOut} />;
+}
+
+export default function App() {
+  const appkey = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY?.trim() ?? "";
+  const useSupabase = isSupabaseConfigured();
+
+  if (!appkey) {
+    return (
+      <div className="min-h-[100dvh] w-full p-6 font-sans text-slate-800">
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+          Taste Road
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-red-600">
+          앱을 불러올 수 없습니다. 네트워크를 확인하거나 나중에 다시 열어 주세요.
+        </p>
+      </div>
+    );
+  }
+
+  if (useSupabase) {
+    return (
+      <SupabaseAuthProvider>
+        <AppWithSupabase appkey={appkey} />
+      </SupabaseAuthProvider>
+    );
+  }
+
+  return <AppLegacyKakao appkey={appkey} />;
 }

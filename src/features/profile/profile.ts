@@ -1,6 +1,9 @@
 export type Profile = {
   nickname?: string;
+  /** 로컬 data URL (미리보기) */
   avatarDataUrl?: string;
+  /** Supabase Storage 등 HTTPS URL */
+  avatarUrl?: string;
 };
 
 const KEY = "taste-road-profile-v1";
@@ -18,6 +21,9 @@ export function getProfile(): Profile {
 
 export function setProfile(next: Profile): void {
   localStorage.setItem(KEY, JSON.stringify(next));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("taste-road-profile-changed"));
+  }
 }
 
 export function setNickname(nickname: string): void {

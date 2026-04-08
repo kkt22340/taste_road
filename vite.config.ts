@@ -35,14 +35,14 @@ function readJsonBody(req: IncomingMessage): Promise<{ code?: string; redirectUr
 
 const KO_HINT_401 =
   "401/Unauthorized: (1) 토큰 교환의 client_id는 [앱 키 → REST API 키]만 사용(JavaScript 키 아님). " +
-  "(2) [카카오 로그인 → 보안]에서 클라이언트 시크릿을 사용하지 않음으로 두세요. " +
-  "시크릿 사용 ON이면 토큰 요청에 client_secret이 필수라, 시크릿 없는 개발 서버에서는 Bad client credentials가 납니다. " +
+  "(2) [카카오 로그인 → 보안]에서 클라이언트 시크릿 사용 시, .env 의 KAKAO_CLIENT_SECRET(서버 전용, VITE_ 금지)을 넣고 dev 재시작. " +
   "(3) 리다이렉트 URI·인가 코드가 유효한지 확인. " +
   "(4) .env 수정 후 npm run dev 재시작.";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const restKey = cleanEnvValue(env.KAKAO_REST_API_KEY ?? "");
+  const kakaoClientSecret = cleanEnvValue(env.KAKAO_CLIENT_SECRET ?? "");
   return {
     plugins: [
       react(),
@@ -89,6 +89,9 @@ export default defineConfig(({ mode }) => {
                 redirect_uri: redirectUri,
                 code,
               });
+              if (kakaoClientSecret) {
+                form.set("client_secret", kakaoClientSecret);
+              }
 
               const postToken = (body: string) =>
                 fetch("https://kauth.kakao.com/oauth/token", {

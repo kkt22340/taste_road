@@ -14,6 +14,9 @@ type Props = {
   mode?: "gate" | "account";
   onAuthenticated?: () => void;
   onSignedOut?: () => void;
+  /** true: Supabase Auth 카카오 OAuth (Kakao JS SDK authorize 대신) */
+  supabaseOAuth?: boolean;
+  onSupabaseLogin?: () => void | Promise<void>;
 };
 
 export function LoginPage({
@@ -21,6 +24,8 @@ export function LoginPage({
   mode = "account",
   onAuthenticated,
   onSignedOut,
+  supabaseOAuth = false,
+  onSupabaseLogin,
 }: Props) {
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -44,8 +49,12 @@ export function LoginPage({
   }, []);
 
   useEffect(() => {
+    if (supabaseOAuth) {
+      setReady(true);
+      return;
+    }
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         await loadKakaoJsSdk();
         if (cancelled) return;
@@ -66,10 +75,20 @@ export function LoginPage({
     return () => {
       cancelled = true;
     };
-  }, [appkey, mode]);
+  }, [appkey, mode, supabaseOAuth]);
 
   const onLogin = useCallback(() => {
     setErr(null);
+    if (supabaseOAuth && onSupabaseLogin) {
+      void Promise.resolve(onSupabaseLogin()).catch((e) =>
+        setErr(
+          loginErrorForUser(
+            e instanceof Error ? e.message : "로그인 시작 실패",
+          ),
+        ),
+      );
+      return;
+    }
     try {
       startKakaoAuthorize();
     } catch (e) {
@@ -79,7 +98,7 @@ export function LoginPage({
         ),
       );
     }
-  }, []);
+  }, [supabaseOAuth, onSupabaseLogin]);
 
   const onLogout = useCallback(() => {
     logoutKakao();

@@ -15,12 +15,22 @@ export function AppNavBar() {
   const { submitRegionSearch, focusMap } = useAppChrome();
   const [q, setQ] = useState("");
   const [nick, setNick] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    setNick(getProfile().nickname ?? null);
-    const onStorage = () => setNick(getProfile().nickname ?? null);
+    const sync = () => {
+      const p = getProfile();
+      setNick(p.nickname ?? null);
+      setAvatarUrl(p.avatarUrl ?? null);
+    };
+    sync();
+    const onStorage = () => sync();
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("taste-road-profile-changed", sync);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("taste-road-profile-changed", sync);
+    };
   }, []);
 
   const initial = useMemo(() => {
@@ -77,7 +87,15 @@ export function AppNavBar() {
           aria-label="My page"
           title={nick ? `@${nick}` : "My page"}
         >
-          {initial}
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initial
+          )}
         </NavLink>
       </div>
     </nav>

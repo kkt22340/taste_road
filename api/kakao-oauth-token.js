@@ -27,6 +27,7 @@ module.exports = async function handler(req, res) {
   }
 
   const restKey = (process.env.KAKAO_REST_API_KEY || "").trim();
+  const clientSecret = (process.env.KAKAO_CLIENT_SECRET || "").trim();
   if (!restKey) {
     res.statusCode = 500;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -65,6 +66,9 @@ module.exports = async function handler(req, res) {
     redirect_uri: redirectUri,
     code,
   });
+  if (clientSecret) {
+    form.set("client_secret", clientSecret);
+  }
 
   const tokenRes = await fetch("https://kauth.kakao.com/oauth/token", {
     method: "POST",

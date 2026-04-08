@@ -4,6 +4,9 @@ interface ImportMetaEnv {
   readonly VITE_KAKAO_JAVASCRIPT_KEY: string;
   /** 카카오 로그인 → 리다이렉트 URI에 등록한 값과 동일하게 (경로·슬래시까지) */
   readonly VITE_KAKAO_REDIRECT_URI?: string;
+  /** 설정 시 Supabase Auth(카카오 OAuth) + profiles/posts 동기화 사용 */
+  readonly VITE_SUPABASE_URL?: string;
+  readonly VITE_SUPABASE_ANON_KEY?: string;
 }
 
 interface ImportMeta {

@@ -23,6 +23,8 @@ import type { VisitMarker } from "../types/domain";
 import { CameraModal } from "../components/CameraModal";
 import { MarkerBottomSheet } from "../components/MarkerBottomSheet";
 import { NewSpotModal, type NewSpotPayload } from "../components/NewSpotModal";
+import { useSupabaseAuthOptional } from "../context/SupabaseAuthContext";
+import { createPostWithPhotos } from "../lib/supabase/postsRemote";
 
 const DEFAULT = { lat: 37.5665, lng: 126.978 };
 
@@ -125,6 +127,7 @@ function UserMePinOverlay({ lat, lng }: { lat: number; lng: number }) {
 }
 
 export function MapPage({ appkey }: MapPageProps) {
+  const supaRemote = useSupabaseAuthOptional();
   const {
     scope,
     setScope,
@@ -303,10 +306,34 @@ export function MapPage({ appkey }: MapPageProps) {
           blob: payload.blobs[i],
         });
       }
+      const uid = supaRemote?.session?.user?.id;
+      const sb = supaRemote?.supabase;
+      if (uid && sb) {
+        try {
+          await createPostWithPhotos(sb, uid, m.id, {
+            title: m.title,
+            note: m.note,
+            lat: m.lat,
+            lng: m.lng,
+            visibility: m.visibility ?? "private",
+            kakaoPlaceId: m.kakaoPlaceId,
+            addressName: m.addressName,
+            categoryName: m.categoryName,
+          }, payload.blobs);
+        } catch (e) {
+          console.error(e);
+          setStatus(
+            (payload.privateOnly ? "Saved (only you)." : "Shared on map.") +
+              " 서버 동기화는 실패했어요.",
+          );
+          setPhotoEpoch((n) => n + 1);
+          return;
+        }
+      }
       setPhotoEpoch((n) => n + 1);
       setStatus(payload.privateOnly ? "Saved (only you)." : "Shared on map.");
     },
-    [],
+    [supaRemote?.session?.user?.id, supaRemote?.supabase],
   );
 
   const openSheet = useCallback((m: VisitMarker) => {
