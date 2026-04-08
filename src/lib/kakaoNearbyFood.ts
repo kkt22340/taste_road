@@ -51,9 +51,11 @@ export async function fetchNearbyFoodPlaces(
     sort: "distance",
     size: String(size),
   });
-  const res = await fetch(
-    `${import.meta.env.DEV ? "/kakao-dapi" : "/api/kakao-dapi"}/v2/local/search/category.json?${params}`,
-  );
+  const res = import.meta.env.DEV
+    ? await fetch(`/kakao-dapi/v2/local/search/category.json?${params}`)
+    : await fetch(
+        `/api/kakao-local?path=${encodeURIComponent("v2/local/search/category.json")}&${params}`,
+      );
   if (!res.ok) {
     const t = await res.text();
     throw new Error(t || `HTTP ${res.status}`);

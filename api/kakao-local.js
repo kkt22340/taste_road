@@ -1,8 +1,7 @@
 /**
- * 레거시/직접 호환: GET /api/kakao-dapi/v2/local/search/category.json?...
- * (구 클라이언트·캐시가 이 URL을 쓰는 경우)
+ * Vercel: GET /api/kakao-local?path=v2/local/search/category.json&...
+ * api/ 는 CommonJS (루트 package.json 의 "type":"module" 과 분리)
  */
-const PREFIX = "/api/kakao-dapi/";
 const ALLOWED = /^v2\/local\/search\/(category|keyword)\.json$/;
 
 module.exports = async function handler(req, res) {
@@ -26,20 +25,12 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const raw = req.url || "";
-  const u = new URL(raw, "http://localhost");
-  const pathname = u.pathname || "";
-  if (!pathname.startsWith(PREFIX)) {
-    res.statusCode = 404;
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ error: "not_found" }));
-    return;
-  }
-
-  const restPath = pathname.slice(PREFIX.length).replace(/^\/+/, "");
+  const u = new URL(req.url || "", "http://localhost");
+  const path = (u.searchParams.get("path") || "").replace(/^\/+/, "");
+  u.searchParams.delete("path");
   const qs = u.searchParams.toString();
 
-  if (!restPath || !ALLOWED.test(restPath)) {
+  if (!path || !ALLOWED.test(path)) {
     res.statusCode = 400;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.end(
@@ -51,7 +42,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const upstreamUrl = `https://dapi.kakao.com/${restPath}${qs ? `?${qs}` : ""}`;
+  const upstreamUrl = `https://dapi.kakao.com/${path}${qs ? `?${qs}` : ""}`;
   const upstream = await fetch(upstreamUrl, {
     method: req.method,
     headers: {

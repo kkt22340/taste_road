@@ -1,4 +1,24 @@
-export default async function handler(req, res) {
+/**
+ * Vercel: POST /api/kakao-oauth-token  (평탄 경로 — 중첩 api/kakao-oauth/token 404 방지)
+ */
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      try {
+        const raw = Buffer.concat(chunks).toString("utf8");
+        resolve(raw ? JSON.parse(raw) : {});
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.statusCode = 405;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -21,7 +41,7 @@ export default async function handler(req, res) {
 
   let body = {};
   try {
-    body = typeof req.body === "object" && req.body ? req.body : JSON.parse(req.body || "{}");
+    body = await readJsonBody(req);
   } catch {
     body = {};
   }
@@ -59,5 +79,4 @@ export default async function handler(req, res) {
   res.statusCode = tokenRes.status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(text);
-}
-
+};
